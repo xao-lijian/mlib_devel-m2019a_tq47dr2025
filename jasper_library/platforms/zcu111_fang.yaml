@@ -1,0 +1,201 @@
+name: zcu111
+manufacturer: Xilinx
+fpga: xczu28dr-ffvg1517-2-e
+family: rfsoc
+config_voltage: 1.8
+cfgbvs: GND
+backend_target: vivado
+mmbus_architecture: AXI4-Lite
+mmbus_base_address: 0xA0000000
+# How to address each 32-bit (i.e. 4 indicates byte-addressable)
+mmbus_address_alignment: 4
+sources: []
+constraints: []
+
+rfdc:
+  # gen3 devices can internally route their input refclk or the output of the RFPLL
+  # as the sample clock for adjacent tiles. See PG269. For such configurations,
+  # tile 225 is the preferred tile when available. The zcu216/208 eval boards only
+  # have the sample clock connected to tile 255.
+  #
+  # For gen1 and gen2 devices the `adc_clk_src` is the same as the tile index
+  tile224:
+    has_adc_clk: True
+    adc_clk_src: 0
+  tile225:
+    has_adc_clk: True
+    adc_clk_src: 1
+  tile226:
+    has_adc_clk: True
+    adc_clk_src: 2
+  tile227:
+    has_adc_clk: True
+    adc_clk_src: 3
+
+onehundredgbe:
+  refclk_freq_str: "156.25"
+  include_rs_fec: 1
+  ncommon: 1
+  management_interface: []
+  # UG1075 v1.9 Fig. 1-39
+  cmac_loc:
+    # xczu28dr has 2 cmac locations, zcu111 can support a second through FMC
+    - CMACE4_X0Y0
+    - CMACE4_X0Y1
+
+provides:
+  - adc_clk
+  - axil_clk
+  - sysref_in
+
+pins:
+  clk_100_p:
+    iostd: LVDS
+    loc: AM15
+  clk_100_n:
+    iostd: LVDS
+    loc: AN15
+  clk_125_p:
+    iostd: LVDS
+    loc: AL17
+  clk_125_n:
+    iostd: LVDS
+    loc: AM17
+
+# NOTE: most of the IO constraints and clocking constraints are taken care of by
+# the RFDC IP itself. Vivado has that baked into the output products of teh IP
+# core. The only necessary pins below are the fabirc clocking related to
+# multi-tile sync Adding additional pins and constraints would not hurt anything
+# but provide more transparent less 'hand-wavy'
+
+# RFDC clocking
+  # `SYSREF_P/N_228` on bank 228
+  # constraints determined by rfdc ip, iostandard and loc not set by user
+  sysref_in_p:
+    loc: U5
+  sysref_in_n:
+    loc: U4
+
+  # SYSREF_FPGA_C_N/P on bank 64
+  pl_sysref_p:
+    iostd: LVDS
+    loc: AK17
+  pl_sysref_n:
+    iostd: LVDS
+    loc: AK16
+
+  #`FPGA_REFCLK_OUT_C_N/P` on bank 64   
+  pl_clk_p:
+    iostd: LVDS
+    loc: AL16
+  pl_clk_n:
+    iostd: LVDS
+    loc: AL15
+
+# 100 GbE
+  # Programmable MGT SI5382 chip GTY bank 128
+  qsfp_mgt_ref_clk_p:
+    loc:
+      - Y31
+      - V31
+      - U33
+      - P31
+  qsfp_mgt_ref_clk_n:
+    loc:
+      - Y32
+      - V32
+      - U34 
+      - P32
+  # SFP connected to MGT bank 128
+  qsfp_mgt_tx_p: 
+    loc: [Y35,  V35, T35, R33,J33,P35,L33,N33,H31,F31,G33,E33,C33,A33,D31,B31]
+  qsfp_mgt_tx_n:
+    loc: [Y36,  V36, T36, R34,J34,P36,L34,N34,H32,F32,G34,E34,C34,A34,D32,B32]
+  qsfp_mgt_rx_p:
+    loc: [AA38, W38, U38, R38,K36,N38,L38,M36,J38,G38,H36,F36,D36,B36,E38,C38]
+  qsfp_mgt_rx_n:
+    loc: [AA39, W39, U39, R39,K37,N39,L39,M37,J39,G39,H37,F37,D37,B37,E39,C39]
+
+  adc_clk_224_p:
+    loc: AF5
+  adc_clk_224_n:
+    loc: AF4
+  
+  adc_clk_225_p:
+    loc: AD5
+  adc_clk_225_n:
+    loc: AD4
+
+  adc_clk_226_p:
+    loc: AB5
+  adc_clk_226_n:
+    loc: AB4
+
+  adc_clk_227_p:
+    loc: Y5
+  adc_clk_227_n:
+    loc: Y4
+
+  vin0_01_p:
+    loc: AP2
+  vin0_01_n:
+    loc: AP1
+  vin0_23_p:
+    loc: AM2
+  vin0_23_n:
+    loc: AM1
+
+  vin1_01_p:
+    loc: AK2
+  vin1_01_n:
+    loc: AK1
+  vin1_23_p:
+    loc: AH2
+  vin1_23_n:
+    loc: AH1
+
+
+  vin2_01_p:
+    loc: AF2
+  vin2_01_n:
+    loc: AF1
+  vin2_23_p:
+    loc: AD2
+  vin2_23_n:
+    loc: AD1
+
+  vin3_01_p:
+    loc: AB2
+  vin3_01_n:
+    loc: AB1
+  vin3_23_p:
+    loc: Y2
+  vin3_23_n:
+    loc: Y1
+  
+
+  led:
+    drive_strength: 8 #HP banks don't support the default of 12
+    iostd: LVCMOS18
+    loc:
+       - AR13
+       - AP13
+       - AR16
+       - AP16
+       - AP15
+       - AN16
+       - AN17
+       - AV15
+
+
+  gpio:
+    iostd: LVCMOS18
+    loc:
+       - N15 #led0 D5
+       - M14 #led1 D6
+       - N14 #led2 D7
+       - L14 #PPS
+       - M15 #GPS
+
+
+

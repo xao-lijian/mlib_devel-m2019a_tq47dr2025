@@ -1,0 +1,114 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                                                                             %
+%   Center for Astronomy Signal Processing and Electronics Research           %
+%   http://seti.ssl.berkeley.edu/casper/                                      %
+%   Copyright (C) 2007 Terry Filiba, Aaron Parsons                            %
+%                                                                             %
+%   This program is free software; you can redistribute it and/or modify      %
+%   it under the terms of the GNU General Public License as published by      %
+%   the Free Software Foundation; either version 2 of the License, or         %
+%   (at your option) any later version.                                       %
+%                                                                             %
+%   This program is distributed in the hope that it will be useful,           %
+%   but WITHOUT ANY WARRANTY; without even the implied warranty of            %
+%   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             %
+%   GNU General Public License for more details.                              %
+%                                                                             %
+%   You should have received a copy of the GNU General Public License along   %
+%   with this program; if not, write to the Free Software Foundation, Inc.,   %
+%   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.               %
+%                                                                             %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+function parallel_sindata_creat_init(blk, varargin)
+clog('entering ramdata_arrange_wrctrl_init','trace');
+% Declare any default values for arguments you might like.
+defaults = {
+    'sample_rate', 4096e6,...
+    'amp', 1024, ...
+    'freq', 100e6, ...    
+    'channels', 32, ... 
+    'width', 16, ...    
+    'bin', 0  
+    };
+
+if same_state(blk, 'defaults', defaults, varargin{:}), return, end
+check_mask_type(blk, 'parallel_sindata_creat');
+munge_block(blk, varargin{:});
+
+
+
+sample_rate = get_var('sample_rate', 'defaults', defaults, varargin{:});
+amp = get_var('amp', 'defaults', defaults, varargin{:});
+freq = get_var('freq', 'defaults', defaults, varargin{:});
+channels = get_var('channels', 'defaults', defaults, varargin{:});
+width = get_var('width', 'defaults', defaults, varargin{:});
+bin = get_var('bin', 'defaults', defaults, varargin{:});
+
+delete_lines(blk);
+
+% creat wave creat block
+
+x = 0;y= 0;x_width = 100;y_width = 50;
+reuse_block(blk, 'clk', 'simulink/Sources/Digital Clock', ...
+    'Position', [x y x+x_width y+y_width],...
+    'SampleTime', '1'  ...
+    );    
+
+x = 900;y= 0;x_width = 100;y_width = 50;
+reuse_block(blk, 'constant', 'xbsIndex_r4/Constant', ...
+    'Position', [x y x+x_width y+y_width],...  
+    'const', '1',...
+    'arith_type', 'Boolean'...     
+    ); 
+
+
+x = 300;y= 0;x_width = 100;y_width = 50;
+for i = 1:channels
+    y = y + 100;
+    part_fre = 3.14*2*freq/(sample_rate/channels);
+    part_phase = 3.14*2*freq/sample_rate*i;
+    reuse_block(blk, ['wave_part' num2str(i)], 'simulink/Sources/Sine Wave', ...
+        'Position', [x y x+x_width y+y_width],...
+        'SineType', 'Time based'  ,...
+        'TimeSource', 'Use external signal'  ,...
+        'Amplitude', num2str(amp)  ,...
+        'frequency', num2str(part_fre)  ,...
+        'Phase', num2str(part_phase)  ...
+        );    
+    add_line(blk, 'clk/1', ['wave_part' num2str(i) '/1']);
+    
+    reuse_block(blk,['xilinx-in' num2str(i)], 'xbsIndex_r4/Gateway In', ... 
+        'Position', [x+300 y x+300+x_width y+y_width],...
+        'gui_display_data_type', 'Fixed-point', ...
+        'arith_type', 'Signed  (2''s comp)'  ,...
+        'n_bits', num2str(width)  ,...
+        'bin_pt', num2str(bin)  ...
+        );      
+    add_line(blk, ['wave_part' num2str(i) '/1'], ['xilinx-in' num2str(i) '/1']);
+    
+    reuse_block(blk,['transform' num2str(i)], 'xbsIndex_r4/Reinterpret', ... 
+        'Position', [x+600 y x+600+x_width y+y_width],...
+        'force_arith_type', 'on', ...
+        'arith_type', 'Signed  (2''s comp)' ...
+        );       
+    add_line(blk, ['wave_part' num2str(i) '/1'], ['transform' num2str(i) '/1']);
+    
+    reuse_block(blk, ['out' num2str(i)], 'built-in/outport', ...
+    'Position', [x+900 y x+900+x_width y+y_width], 'Port', num2str(1));
+
+end
+% 
+% x = 1000;y= 200;x_width = 100;y_width = 100;
+% reuse_block(blk, 'in_shift_data_valid', 'xbsIndex_r4/Register', ...
+%     'Position', [x y x+x_width y+y_width],...
+%     'en', 'off'... 
+%     );
+% 
+% add_line(blk, 'sys_rst/1', 'in_data_carry_cnt/1');
+% add_line(blk, 'data_valid/1', 'in_data_carry_cnt/2');
+% add_line(blk, 'in_data_carry_cnt/2', 'in_shift_data_valid/1');
+
+% clean_blocks(blk);
+save_state(blk, 'defaults', defaults, varargin{:});
+clog('exiting pfb_fir_real_init','trace');

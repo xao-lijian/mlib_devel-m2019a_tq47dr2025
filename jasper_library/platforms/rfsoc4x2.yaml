@@ -1,0 +1,182 @@
+name: rfsoc4x2
+manufacturer: Xilinx
+fpga: xczu47dr-ffve1156-2-e
+family: rfsoc
+config_voltage: 1.8
+cfgbvs: GND
+backend_target: vivado
+mmbus_architecture: AXI4-Lite
+mmbus_base_address: 0xA0000000
+# How to address each 32-bit (i.e. 4 indicates byte-addressable)
+mmbus_address_alignment: 4
+sources: []
+constraints: []
+
+rfdc:
+  # gen3 devices can internally route their input refclk or the output of the RFPLL
+  # as the sample clock for adjacent tiles. See PG269. For such configurations,
+  # tile 225 is the preferred tile when available. The zcu216/208 eval boards only
+  # have the sample clock connected to tile 255.
+  #
+  # For gen1 and gen2 devices the `adc_clk_src` is the same as the tile index
+  tile224:
+    has_adc_clk: True
+    adc_clk_src: 2
+  tile225:
+    has_adc_clk: True
+    adc_clk_src: 2
+  tile226:
+    has_adc_clk: True
+    adc_clk_src: 2
+  tile227:
+    has_adc_clk: True
+    adc_clk_src: 2
+  # DAC
+  tile228:
+    has_dac_clk: True
+    dac_clk_src: 6
+  tile229:
+    has_dac_clk: False
+    dac_clk_src: 6
+  tile228:
+    has_dac_clk: True
+    dac_clk_src: 6
+  tile229:
+    has_dac_clk: False
+    dac_clk_src: 6
+
+onehundredgbe:
+  refclk_freq_str: "156.25"
+  include_rs_fec: 1
+  ncommon: 1
+  management_interface: []
+  # UG1075 v1.9 Fig. 1-39
+  cmac_loc:
+    # xczu28dr has 2 cmac locations, zcu111 can support a second through FMC
+    - CMACE4_X0Y0
+    - CMACE4_X0Y1
+
+provides:
+  - adc_clk
+  - axil_clk
+  - sysref_in
+
+pins:
+  clk_100_p:
+    iostd: LVDS
+    loc: AM15
+  clk_100_n:
+    iostd: LVDS
+    loc: AN15
+  clk_125_p:
+    iostd: LVDS
+    loc: AL17
+  clk_125_n:
+    iostd: LVDS
+    loc: AM17
+
+# NOTE: most of the IO constraints and clocking constraints are taken care of by
+# the RFDC IP itself. Vivado has that baked into the output products of teh IP
+# core. The only necessary pins below are the fabirc clocking related to
+# multi-tile sync Adding additional pins and constraints would not hurt anything
+# but provide more transparent less 'hand-wavy'
+
+# RFDC clocking
+  # `SYSREF_P/N_228` on bank 228
+  # constraints determined by rfdc ip, iostandard and loc not set by user
+  sysref_p:
+    loc: N5
+  sysref_n:
+    loc: N4
+
+  pl_sysref_p:
+    diff_term: TERM_100
+    iostd: LVDS
+    loc: AL9
+  pl_sysref_n:
+    iostd: LVDS
+    loc: AM9
+
+  #`FPGA_REFCLK_OUT_C_N/P` on bank 64   
+  pl_clk_p:
+    diff_term: TERM_100
+    iostd: LVDS
+    loc: AG17
+  pl_clk_n:
+    iostd: LVDS
+    loc: AH17
+
+# 100 GbE
+# 100 GbE
+  # Programmable MGT SI5382 chip GTY bank 128
+  qsfp_mgt_ref_clk_p:
+    loc:
+      - M28
+      - H28
+  qsfp_mgt_ref_clk_n:
+    loc:
+      - M29
+      - H29
+  # SFP connected to MGT bank 128
+  qsfp_mgt_tx_p: 
+    loc: [N30, L30, J30, G30,E30,D28,C30,B28]
+  qsfp_mgt_tx_n:
+    loc: [N31, L31, J31, G31,E31,D29,C31,B29]
+  qsfp_mgt_rx_p:
+    loc: [P33, M33, K33, H33,F33,D33,B33,A31]
+  qsfp_mgt_rx_n:
+    loc: [P34, M34, K34, H34,F34,D34,B34,A32]
+
+  forty_gbe_refclk_p:
+    loc:
+      - Y31
+      - V31
+  forty_gbe_refclk_n:
+    loc:
+      - Y32
+      - V32
+
+
+
+
+  led:
+    iostd: LVCMOS18
+    loc:
+      # green 
+      - AM7 # PL_USER_LED1
+      - AM8 # PL_USER_LED2
+      - AN7  # PL_USER_LED6
+      - AN8  # PL_USER_LED8
+
+  sync_in:
+    iostd: LVCMOS18
+    loc:
+      # user defined
+      - E14  # PL_SYNC
+
+  gpio:
+    iostd: LVCMOS33
+    loc:
+      # user defined
+      - AU1  # PL_SYNC
+      - AV8  # 04832_RST
+      - AU7  # 04832_SEL1
+      - AV7  # 04832_SEL0
+      - AW6  # LE2594_C
+      - AW5  # LE2594_B
+      - AW4  # LE2594_A
+
+      - AV2  # SDI
+      - AV3  # SDO
+      - AU2  # SCK
+      - AW3  # 04832CS  
+  gpio2:
+      iostd: LVCMOS18
+      loc:
+        - E14 #trig_in  0 J7
+        - D14 #feed in  1 J43
+        - G12 #trig_out 2 J44
+        - F12 #feed out 3 J45
+
+
+
